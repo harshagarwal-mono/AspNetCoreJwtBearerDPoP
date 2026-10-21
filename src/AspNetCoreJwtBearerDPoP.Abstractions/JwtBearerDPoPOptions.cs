@@ -52,6 +52,12 @@ public sealed class JwtBearerDPoPOptions : AuthenticationSchemeOptions
     public string AccessTokenHashClaimName { get; set; } = JwtBearerDPoPDefaults.AccessTokenHashClaimName;
 
     /// <summary>
+    /// When <see langword="true"/> (the default), the request must include a DPoP proof and that proof is validated.
+    /// When <see langword="false"/>, only the access token is validated.
+    /// </summary>
+    public bool RequireDPoP { get; set; } = true;
+
+    /// <summary>
     /// When <see langword="true"/>, requires DPoP <c>htu</c> to match the request URL (scheme+host+path).
     /// </summary>
     public bool ValidateHtu { get; set; }

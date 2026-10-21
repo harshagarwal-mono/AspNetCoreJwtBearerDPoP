@@ -1,6 +1,6 @@
+using AspNetCoreJwtBearerDPoP.Abstractions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
-using AspNetCoreJwtBearerDPoP.Abstractions;
 
 namespace AspNetCoreJwtBearerDPoP.Tests;
 

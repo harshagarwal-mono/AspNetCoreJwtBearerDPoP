@@ -1,17 +1,18 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
+using AspNetCoreJwtBearerDPoP.Abstractions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.Extensions.Primitives;
 using Microsoft.IdentityModel.Tokens;
-using AspNetCoreJwtBearerDPoP.Abstractions;
 
 namespace AspNetCoreJwtBearerDPoP;
 
 /// <summary>
-/// Authenticates requests that carry an access JWT plus a DPoP proof (RFC 9449),
+/// Authenticates requests that carry an access JWT and, when required, a DPoP proof (RFC 9449),
 /// from headers and/or query string (WebSocket-friendly).
 /// </summary>
 public sealed class JwtBearerDPoPHandler(IOptionsMonitor<JwtBearerDPoPOptions> options, ILoggerFactory logger, UrlEncoder encoder) : AuthenticationHandler<JwtBearerDPoPOptions>(options, logger, encoder)
@@ -26,32 +27,76 @@ public sealed class JwtBearerDPoPHandler(IOptionsMonitor<JwtBearerDPoPOptions> o
             return earlyResult;
         }
 
-        if (string.IsNullOrWhiteSpace(accessToken) || string.IsNullOrWhiteSpace(dPoP))
+        if (string.IsNullOrWhiteSpace(accessToken))
         {
             return AuthenticateResult.NoResult();
         }
 
+        bool requireDPoP = Options.RequireDPoP;
+
+        if (requireDPoP && string.IsNullOrWhiteSpace(dPoP))
+        {
+            return AuthenticateResult.NoResult();
+        }
+
+        AuthenticateResult? storeResult = await ValidateAgainstTokenStoreAsync(accessToken).ConfigureAwait(false);
+
+        if (storeResult is not null)
+        {
+            return storeResult;
+        }
+
         TokenValidationParameters accessTokenParameters = await ResolveAccessTokenValidationParametersAsync().ConfigureAwait(false);
-        ClaimsPrincipal? principal = DPoPJwtValidator.Validate(accessToken, dPoP, accessTokenParameters, CreateDPoPValidationParameters());
+        ClaimsPrincipal? principal = requireDPoP
+            ? DPoPJwtValidator.Validate(accessToken, dPoP!, accessTokenParameters, CreateDPoPValidationParameters())
+            : DPoPJwtValidator.ValidateAccessToken(accessToken, accessTokenParameters);
 
         if (principal is null)
         {
-            return AuthenticateResult.Fail("Access token or DPoP proof is invalid.");
+            return AuthenticateResult.Fail(requireDPoP ? JwtBearerDPoPErrors.AccessTokenOrDPoPProofInvalid : JwtBearerDPoPErrors.AccessTokenInvalid);
         }
 
         return await CreateSuccessResultAsync(accessToken, dPoP, principal).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// When an <see cref="ITokenStore"/> is registered, the access token must already be present.
+    /// No registration means the check is skipped. A missing token and a store exception
+    /// both fail with <see cref="JwtBearerDPoPErrors.AccessTokenNotPresentInTokenStore"/>.
+    /// </summary>
+    private async Task<AuthenticateResult?> ValidateAgainstTokenStoreAsync(string accessToken)
+    {
+        ITokenStore? store = Context.RequestServices.GetService<ITokenStore>();
+        if (store is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            if (await store.ContainsAsync(accessToken, Context.RequestAborted).ConfigureAwait(false))
+            {
+                return null;
+            }
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            Logger.LogError(exception, JwtBearerDPoPErrors.TokenStoreLookupFailed);
+        }
+
+        return AuthenticateResult.Fail(JwtBearerDPoPErrors.AccessTokenNotPresentInTokenStore);
+    }
+
     private async Task<(string? AccessToken, string? DPoP, AuthenticateResult? EarlyResult)> ReadCredentialsAsync()
     {
-        JwtBearerDPoPOptions options = Options;
-        var context = new JwtBearerDPoPMessageReceivedContext(Context, Scheme, options)
+        JwtBearerDPoPOptions opts = Options;
+        var context = new JwtBearerDPoPMessageReceivedContext(Context, Scheme, opts)
         {
-            Token = ReadFirst(options.AccessTokenHeaderNames, options.AccessTokenQueryNames),
-            DPoP = ReadFirst(options.DPoPHeaderNames, options.DPoPQueryNames),
+            Token = ReadFirst(opts.AccessTokenHeaderNames, opts.AccessTokenQueryNames),
+            DPoP = ReadFirst(opts.DPoPHeaderNames, opts.DPoPQueryNames),
         };
 
-        await options.Events.MessageReceived(context).ConfigureAwait(false);
+        await opts.Events.MessageReceived(context).ConfigureAwait(false);
         return (context.Token, context.DPoP, context.Result);
     }
 
@@ -82,14 +127,14 @@ public sealed class JwtBearerDPoPHandler(IOptionsMonitor<JwtBearerDPoPOptions> o
         };
     }
 
-    private async Task<AuthenticateResult> CreateSuccessResultAsync(string accessToken, string dPoP, ClaimsPrincipal principal)
+    private async Task<AuthenticateResult> CreateSuccessResultAsync(string accessToken, string? dPoP, ClaimsPrincipal principal)
     {
         var ticketPrincipal = new ClaimsPrincipal(new ClaimsIdentity(principal.Claims, Scheme.Name, ClaimsIdentity.DefaultNameClaimType, ClaimsIdentity.DefaultRoleClaimType));
 
         var context = new JwtBearerDPoPTokenValidatedContext(Context, Scheme, Options)
         {
             AccessToken = accessToken,
-            DPoP = dPoP,
+            DPoP = dPoP ?? string.Empty,
             Principal = ticketPrincipal,
         };
 

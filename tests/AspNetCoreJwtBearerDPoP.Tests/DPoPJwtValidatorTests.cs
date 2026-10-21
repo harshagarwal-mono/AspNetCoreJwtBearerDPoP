@@ -1,9 +1,9 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using Microsoft.IdentityModel.Tokens;
 using AspNetCoreJwtBearerDPoP.Abstractions;
 using AspNetCoreJwtBearerDPoP.Tests.TestHelpers;
+using Microsoft.IdentityModel.Tokens;
 
 namespace AspNetCoreJwtBearerDPoP.Tests;
 
@@ -82,6 +82,35 @@ public sealed class DPoPJwtValidatorTests
             "dpop",
             DPoPTestTokenFactory.CreateAccessTokenValidationParameters(issuerKey),
             parameters));
+    }
+
+    [Fact]
+    public void ValidateAccessToken_WhenTokenValid_ReturnsPrincipal()
+    {
+        (SymmetricSecurityKey issuerKey, SigningCredentials issuerCredentials) = DPoPTestTokenFactory.CreateIssuerSigning();
+        (_, string publicJwk, _) = DPoPTestTokenFactory.CreateClientKeyPair();
+        string accessToken = DPoPTestTokenFactory.CreateAccessToken(issuerCredentials, publicJwk);
+
+        ClaimsPrincipal? principal = DPoPJwtValidator.ValidateAccessToken(
+            accessToken,
+            DPoPTestTokenFactory.CreateAccessTokenValidationParameters(issuerKey));
+
+        Assert.NotNull(principal);
+        Assert.Equal("user-1", principal.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("   ")]
+    [InlineData("not.a.jwt")]
+    public void ValidateAccessToken_WhenTokenMissingOrInvalid_ReturnsNull(string? accessToken)
+    {
+        (SymmetricSecurityKey issuerKey, _) = DPoPTestTokenFactory.CreateIssuerSigning();
+
+        Assert.Null(DPoPJwtValidator.ValidateAccessToken(
+            accessToken!,
+            DPoPTestTokenFactory.CreateAccessTokenValidationParameters(issuerKey)));
     }
 
     [Fact]

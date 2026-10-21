@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <PackageId>AspNetCoreJwtBearerDPoP.Abstractions</PackageId>
-    <Description>Options, defaults, events and context types for AspNetCoreJwtBearerDPoP: ASP.NET Core JWT access token + DPoP proof (RFC 9449) authentication.</Description>
+    <Description>Options, defaults, events, context types, and ITokenStore for AspNetCoreJwtBearerDPoP: ASP.NET Core JWT access token + DPoP proof (RFC 9449) authentication.</Description>
   </PropertyGroup>
 
   <ItemGroup>

@@ -1,5 +1,5 @@
-using Microsoft.IdentityModel.Tokens;
 using AspNetCoreJwtBearerDPoP.Abstractions;
+using Microsoft.IdentityModel.Tokens;
 
 namespace AspNetCoreJwtBearerDPoP.Tests;
 

@@ -2,18 +2,19 @@
 
 ASP.NET Core authentication handler for **sender-constrained JWT access tokens** using **DPoP proofs** ([RFC 9449](https://datatracker.ietf.org/doc/html/rfc9449)).
 
-A stolen access token alone is not enough: every request must also carry a DPoP proof signed with the client's **private** key, whose public half is embedded in the access token.
+A stolen access token alone is not enough when DPoP is required: every request must also carry a DPoP proof signed with the client's **private** key, whose public half is embedded in the access token. Set `RequireDPoP` to `false` to validate the access token only.
 
 - Familiar shape: `AddJwtBearerDPoP(...)`, just like `AddJwtBearer(...)`
 - Reads the access token and the DPoP proof from **headers or the query string**, so browser WebSocket upgrades work (browsers cannot set custom WebSocket headers)
 - Pluggable signing-key resolution and validation events
 - Optional `htm` / `htu` request binding
+- Optional access-token allowlist via `ITokenStore` (bring your own Redis or other store)
 - Targets `net8.0` and `net10.0`
 
 | Package | Purpose |
 | --- | --- |
 | `AspNetCoreJwtBearerDPoP` | Handler, `AddJwtBearerDPoP`, `DPoPJwtValidator` |
-| `AspNetCoreJwtBearerDPoP.Abstractions` | Options, defaults, events, context types |
+| `AspNetCoreJwtBearerDPoP.Abstractions` | Options, defaults, events, context types, `ITokenStore` |
 
 ## Installation
 
@@ -55,12 +56,10 @@ public class SecureController : ControllerBase { }
 
 For each request the handler:
 
-1. Reads the access token and the DPoP proof (header first, then query string).
-2. Validates the access token with `TokenValidationParameters` (signature, issuer, lifetime, …).
-3. Reads the client public JWK from the access-token claim `jwk`.
-4. Validates the DPoP proof signature with that public key.
-5. Requires the DPoP claim `ath` to equal `base64url(SHA-256(ASCII(access_token)))`.
-6. Optionally checks DPoP `htm` (HTTP method) and `htu` (request URL).
+1. Reads the access token and, when `RequireDPoP` is `true` (the default), the DPoP proof (header first, then query string).
+2. When an `ITokenStore` is registered, accepts the access token only if `ContainsAsync` returns `true`. A missing token and a store error both fail with the same message. With no store registered, this step is skipped.
+3. Validates the access token with `TokenValidationParameters` (signature, issuer, lifetime, …).
+4. When `RequireDPoP` is `true`, reads the client public JWK from the access-token claim `jwk`, validates the DPoP proof signature with that public key, requires the DPoP claim `ath` to equal `base64url(SHA-256(ASCII(access_token)))`, and optionally checks `htm` / `htu`.
 
 On success the access-token claims become the authenticated principal. On failure the result is `AuthenticateResult.Fail` (401 on challenge).
 
@@ -116,9 +115,30 @@ On the server, `DPoPJwtValidator.ComputeAccessTokenHash(accessToken)` produces t
 | `DPoPQueryNames` | `DPoP` | Query keys checked when no header is present |
 | `PublicKeyClaimName` | `jwk` | Access-token claim holding the client public JWK JSON |
 | `AccessTokenHashClaimName` | `ath` | DPoP claim holding the access-token hash |
+| `RequireDPoP` | `true` | Require and validate a DPoP proof. `false` validates the access token only |
 | `ValidateHtm` | `false` | Require DPoP `htm` to match the request method |
 | `ValidateHtu` | `false` | Require DPoP `htu` to match scheme + host + path |
 | `Events` | no-op | See below |
+
+## Token store
+
+`ITokenStore` is an allowlist the library does not implement. Register your own (Redis, a database, anything else) when a cryptographically valid access token must also have been issued and not revoked:
+
+```csharp
+builder.Services.AddSingleton<ITokenStore, RedisTokenStore>();
+```
+
+```csharp
+public sealed class RedisTokenStore(IConnectionMultiplexer redis) : ITokenStore
+{
+    public async Task<bool> ContainsAsync(string accessToken, CancellationToken cancellationToken = default)
+    {
+        return await redis.GetDatabase().KeyExistsAsync(accessToken);
+    }
+}
+```
+
+Write the key when you issue the token, with a TTL that matches `exp`, and delete it to revoke. Hash the token inside your store when you would rather not keep the raw JWT as the Redis key. The handler calls `ContainsAsync` before signature and DPoP checks. `true` continues; `false` or a thrown exception fails the request with the same message. If nothing is registered for `ITokenStore`, the handler does not consult a store.
 
 ## Events
 

@@ -1,7 +1,7 @@
+using AspNetCoreJwtBearerDPoP.Abstractions;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
-using AspNetCoreJwtBearerDPoP.Abstractions;
 
 namespace AspNetCoreJwtBearerDPoP.Tests;
 
@@ -44,7 +44,9 @@ public sealed class JwtBearerDPoPExtensionsTests
 
         IOptionsMonitor<JwtBearerDPoPOptions> options =
             provider.GetRequiredService<IOptionsMonitor<JwtBearerDPoPOptions>>();
-        Assert.Equal(JwtBearerDPoPDefaults.PublicKeyClaimName, options.Get(JwtBearerDPoPDefaults.AuthenticationScheme).PublicKeyClaimName);
+        JwtBearerDPoPOptions schemeOptions = options.Get(JwtBearerDPoPDefaults.AuthenticationScheme);
+        Assert.Equal(JwtBearerDPoPDefaults.PublicKeyClaimName, schemeOptions.PublicKeyClaimName);
+        Assert.True(schemeOptions.RequireDPoP);
     }
 
     [Fact]

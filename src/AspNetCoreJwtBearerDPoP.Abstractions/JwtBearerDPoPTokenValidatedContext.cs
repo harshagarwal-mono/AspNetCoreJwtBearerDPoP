@@ -11,6 +11,9 @@ public sealed class JwtBearerDPoPTokenValidatedContext(HttpContext context, Auth
     /// <summary>The validated access token.</summary>
     public required string AccessToken { get; init; }
 
-    /// <summary>The validated DPoP proof bound to <see cref="AccessToken"/>.</summary>
+    /// <summary>
+    /// DPoP proof read from the request. Empty when none was sent.
+    /// Validated only when <see cref="JwtBearerDPoPOptions.RequireDPoP"/> is <see langword="true"/>.
+    /// </summary>
     public required string DPoP { get; init; }
 }

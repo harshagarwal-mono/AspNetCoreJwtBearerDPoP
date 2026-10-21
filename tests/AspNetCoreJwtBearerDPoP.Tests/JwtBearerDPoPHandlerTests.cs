@@ -1,12 +1,13 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text.Encodings.Web;
-using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Http;
-using Microsoft.Extensions.Logging.Abstractions;
-using Microsoft.IdentityModel.Tokens;
 using AspNetCoreJwtBearerDPoP.Abstractions;
 using AspNetCoreJwtBearerDPoP.Tests.TestHelpers;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
+using Microsoft.IdentityModel.Tokens;
 
 namespace AspNetCoreJwtBearerDPoP.Tests;
 
@@ -356,6 +357,156 @@ public sealed class JwtBearerDPoPHandlerTests
         Assert.True(result.Succeeded);
     }
 
+    [Fact]
+    public async Task Authenticate_WhenRequireDPoPIsFalse_AcceptsAccessTokenWithoutProof()
+    {
+        string accessToken = DPoPTestTokenFactory.CreateAccessToken(_issuerCredentials, _publicJwk);
+        JwtBearerDPoPOptions options = CreateOptions();
+        options.RequireDPoP = false;
+
+        var context = new DefaultHttpContext();
+        context.Request.Headers["token"] = accessToken;
+
+        AuthenticateResult result = await AuthenticateAsync(options, context);
+
+        Assert.True(result.Succeeded);
+        Assert.Equal("user-1", result.Principal.FindFirst(ClaimTypes.NameIdentifier)?.Value);
+    }
+
+    [Fact]
+    public async Task Authenticate_WhenRequireDPoPIsFalse_IgnoresProof()
+    {
+        string accessToken = DPoPTestTokenFactory.CreateAccessToken(_issuerCredentials, _publicJwk);
+        JwtBearerDPoPOptions options = CreateOptions();
+        options.RequireDPoP = false;
+
+        var context = new DefaultHttpContext();
+        context.Request.Headers["token"] = accessToken;
+        context.Request.Headers["DPoP"] = "not.a.proof";
+
+        AuthenticateResult result = await AuthenticateAsync(options, context);
+
+        Assert.True(result.Succeeded);
+    }
+
+    [Fact]
+    public async Task Authenticate_WhenRequireDPoPIsFalse_AndAccessTokenInvalid_Fails()
+    {
+        JwtBearerDPoPOptions options = CreateOptions();
+        options.RequireDPoP = false;
+
+        var context = new DefaultHttpContext();
+        context.Request.Headers["token"] = "not.a.jwt";
+
+        AuthenticateResult result = await AuthenticateAsync(options, context);
+
+        Assert.False(result.Succeeded);
+        Assert.False(result.None);
+        Assert.Equal("Access token is invalid.", result.Failure?.Message);
+    }
+
+    [Fact]
+    public async Task Authenticate_WhenTokenStoreContainsAccessToken_Succeeds()
+    {
+        string accessToken = DPoPTestTokenFactory.CreateAccessToken(_issuerCredentials, _publicJwk);
+        string dPoP = DPoPTestTokenFactory.CreateDPoP(accessToken, _clientEcdsa);
+        string? seen = null;
+        var context = new DefaultHttpContext();
+        context.Request.Headers["token"] = $"  {accessToken}  ";
+        context.Request.Headers["DPoP"] = dPoP;
+
+        AuthenticateResult result = await AuthenticateAsync(
+            CreateOptions(),
+            context,
+            new DelegateTokenStore(token =>
+            {
+                seen = token;
+                return true;
+            }));
+
+        Assert.True(result.Succeeded);
+        Assert.Equal(accessToken, seen);
+    }
+
+    [Fact]
+    public async Task Authenticate_WhenTokenStoreDoesNotContainAccessToken_Fails()
+    {
+        string accessToken = DPoPTestTokenFactory.CreateAccessToken(_issuerCredentials, _publicJwk);
+        string dPoP = DPoPTestTokenFactory.CreateDPoP(accessToken, _clientEcdsa);
+        var context = new DefaultHttpContext();
+        context.Request.Headers["token"] = accessToken;
+        context.Request.Headers["DPoP"] = dPoP;
+
+        AuthenticateResult result = await AuthenticateAsync(
+            CreateOptions(),
+            context,
+            new DelegateTokenStore(_ => false));
+
+        Assert.False(result.Succeeded);
+        Assert.False(result.None);
+        Assert.Equal("Access token is not present in the token store.", result.Failure?.Message);
+    }
+
+    [Fact]
+    public async Task Authenticate_WhenTokenStoreThrows_Fails()
+    {
+        string accessToken = DPoPTestTokenFactory.CreateAccessToken(_issuerCredentials, _publicJwk);
+        string dPoP = DPoPTestTokenFactory.CreateDPoP(accessToken, _clientEcdsa);
+        var context = new DefaultHttpContext();
+        context.Request.Headers["token"] = accessToken;
+        context.Request.Headers["DPoP"] = dPoP;
+
+        AuthenticateResult result = await AuthenticateAsync(
+            CreateOptions(),
+            context,
+            new DelegateTokenStore(_ => throw new InvalidOperationException("redis down")));
+
+        Assert.False(result.Succeeded);
+        Assert.False(result.None);
+        Assert.Equal("Access token is not present in the token store.", result.Failure?.Message);
+    }
+
+    [Fact]
+    public async Task Authenticate_WhenTokenStoreRejects_DoesNotResolveSigningKeys()
+    {
+        bool resolved = false;
+        string accessToken = DPoPTestTokenFactory.CreateAccessToken(_issuerCredentials, _publicJwk);
+        string dPoP = DPoPTestTokenFactory.CreateDPoP(accessToken, _clientEcdsa);
+        JwtBearerDPoPOptions options = CreateOptions();
+        options.Events = new JwtBearerDPoPEvents
+        {
+            OnResolveAccessTokenSigningKeys = _ =>
+            {
+                resolved = true;
+                return Task.CompletedTask;
+            },
+        };
+
+        var context = new DefaultHttpContext();
+        context.Request.Headers["token"] = accessToken;
+        context.Request.Headers["DPoP"] = dPoP;
+
+        AuthenticateResult result = await AuthenticateAsync(options, context, new DelegateTokenStore(_ => false));
+
+        Assert.False(resolved);
+        Assert.Equal("Access token is not present in the token store.", result.Failure?.Message);
+    }
+
+    [Fact]
+    public async Task Authenticate_WhenRequireDPoPIsFalse_AndTokenStoreRejects_Fails()
+    {
+        string accessToken = DPoPTestTokenFactory.CreateAccessToken(_issuerCredentials, _publicJwk);
+        JwtBearerDPoPOptions options = CreateOptions();
+        options.RequireDPoP = false;
+
+        var context = new DefaultHttpContext();
+        context.Request.Headers["token"] = accessToken;
+
+        AuthenticateResult result = await AuthenticateAsync(options, context, new DelegateTokenStore(_ => false));
+
+        Assert.Equal("Access token is not present in the token store.", result.Failure?.Message);
+    }
+
     private JwtBearerDPoPOptions CreateOptions()
     {
         return new JwtBearerDPoPOptions
@@ -364,8 +515,20 @@ public sealed class JwtBearerDPoPHandlerTests
         };
     }
 
-    private static async Task<AuthenticateResult> AuthenticateAsync(JwtBearerDPoPOptions options, HttpContext context)
+    private static async Task<AuthenticateResult> AuthenticateAsync(
+        JwtBearerDPoPOptions options,
+        HttpContext context,
+        ITokenStore? tokenStore = null)
     {
+        var services = new ServiceCollection();
+        if (tokenStore is not null)
+        {
+            services.AddSingleton(tokenStore);
+        }
+
+        await using ServiceProvider provider = services.BuildServiceProvider();
+        context.RequestServices = provider;
+
         var handler = new JwtBearerDPoPHandler(
             new TestOptionsMonitor<JwtBearerDPoPOptions>(options),
             NullLoggerFactory.Instance,
@@ -378,5 +541,13 @@ public sealed class JwtBearerDPoPHandlerTests
 
         await handler.InitializeAsync(scheme, context);
         return await handler.AuthenticateAsync();
+    }
+
+    private sealed class DelegateTokenStore(Func<string, bool> contains) : ITokenStore
+    {
+        public Task<bool> ContainsAsync(string accessToken, CancellationToken cancellationToken = default)
+        {
+            return Task.FromResult(contains(accessToken));
+        }
     }
 }

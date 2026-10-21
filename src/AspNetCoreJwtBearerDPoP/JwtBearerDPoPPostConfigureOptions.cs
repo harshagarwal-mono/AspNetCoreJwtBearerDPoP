@@ -1,6 +1,6 @@
+using AspNetCoreJwtBearerDPoP.Abstractions;
 using Microsoft.Extensions.Options;
 using Microsoft.IdentityModel.Tokens;
-using AspNetCoreJwtBearerDPoP.Abstractions;
 
 namespace AspNetCoreJwtBearerDPoP;
 

@@ -1,0 +1,18 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "Fix: Mtf Dotnet Format Errors",
+            "type": "shell",
+            "command": "dotnet",
+            "args": [
+                "format",
+                "--severity",
+                "error",
+                "--verbosity",
+                "normal"
+            ],
+            "group": "build"
+        },
+    ]
+}

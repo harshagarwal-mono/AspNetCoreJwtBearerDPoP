@@ -2,8 +2,8 @@ using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using Microsoft.IdentityModel.Tokens;
 using AspNetCoreJwtBearerDPoP.Abstractions;
+using Microsoft.IdentityModel.Tokens;
 
 namespace AspNetCoreJwtBearerDPoP;
 
@@ -13,6 +13,26 @@ namespace AspNetCoreJwtBearerDPoP;
 public static class DPoPJwtValidator
 {
     private static readonly JwtSecurityTokenHandler _handler = new();
+
+    /// <summary>
+    /// Validates <paramref name="accessToken"/> on its own. Returns a principal on success.
+    /// </summary>
+    public static ClaimsPrincipal? ValidateAccessToken(string accessToken, TokenValidationParameters accessTokenValidationParameters)
+    {
+        if (string.IsNullOrWhiteSpace(accessToken) || accessTokenValidationParameters is null)
+        {
+            return null;
+        }
+
+        try
+        {
+            return _handler.ValidateToken(accessToken, accessTokenValidationParameters, out SecurityToken _);
+        }
+        catch (Exception)
+        {
+            return null;
+        }
+    }
 
     /// <summary>
     /// Validates <paramref name="accessToken"/> and <paramref name="dPoP"/>. Returns a principal on success.
@@ -31,7 +51,13 @@ public static class DPoPJwtValidator
 
         try
         {
-            ClaimsPrincipal principal = _handler.ValidateToken(accessToken, accessTokenValidationParameters, out SecurityToken _);
+            ClaimsPrincipal? principal = ValidateAccessToken(accessToken, accessTokenValidationParameters);
+
+            if (principal is null)
+            {
+                return null;
+            }
+
             string? jwkJson = principal.FindFirst(dPoPValidationParameters.PublicKeyClaimName)?.Value;
 
             if (string.IsNullOrWhiteSpace(jwkJson))
