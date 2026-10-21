@@ -9,7 +9,7 @@ A stolen access token alone is not enough when DPoP is required: every request m
 - Pluggable signing-key resolution and validation events
 - Optional `htm` / `htu` request binding
 - Optional access-token allowlist via `ITokenStore` (bring your own Redis or other store)
-- Targets `net8.0` and `net10.0`
+- Targets `net10.0`
 
 | Package | Purpose |
 | --- | --- |
@@ -168,17 +168,6 @@ Resolving signing keys at request time:
 - Create a fresh DPoP proof (new `jti` / `iat`) for every request.
 - Prefer headers over the query string when the client allows it; query strings can end up in logs.
 - This package does not track `jti` values, so it does not prevent replay of a captured proof within the access token's lifetime. Add a replay cache in `OnTokenValidated` if you need that guarantee.
-
-## Building and releasing
-
-```bash
-dotnet build -c Release
-dotnet test -c Release
-dotnet pack -c Release -o artifacts
-dotnet nuget push "artifacts/*.nupkg" --api-key <your-nuget-api-key> --source https://api.nuget.org/v3/index.json
-```
-
-`dotnet pack` also writes a `.snupkg` symbol package next to each `.nupkg`; `dotnet nuget push` of the `.nupkg` publishes the symbols with it. Set the version with `-p:Version=1.0.0` (the default is `1.0.0`).
 
 ## License
 
