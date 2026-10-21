@@ -12,7 +12,6 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/AspNetCoreJwtBearerDPoP/AspNetCoreJwtBearerDPoP.csproj" />
-    <ProjectReference Include="../../src/AspNetCoreJwtBearerDPoP.Abstractions/AspNetCoreJwtBearerDPoP.Abstractions.csproj" />
   </ItemGroup>
 
   <ItemGroup>

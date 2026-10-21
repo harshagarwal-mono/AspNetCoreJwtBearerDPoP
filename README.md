@@ -11,24 +11,16 @@ A stolen access token alone is not enough when DPoP is required: every request m
 - Optional access-token allowlist via `ITokenStore` (bring your own Redis or other store)
 - Targets `net10.0`
 
-| Package | Purpose |
-| --- | --- |
-| `AspNetCoreJwtBearerDPoP` | Handler, `AddJwtBearerDPoP`, `DPoPJwtValidator` |
-| `AspNetCoreJwtBearerDPoP.Abstractions` | Options, defaults, events, context types, `ITokenStore` |
-
 ## Installation
 
 ```bash
 dotnet add package AspNetCoreJwtBearerDPoP
 ```
 
-`AspNetCoreJwtBearerDPoP.Abstractions` is pulled in automatically. Reference it directly only from projects that need the option and event types without the handler.
-
 ## Quick start
 
 ```csharp
 using AspNetCoreJwtBearerDPoP;
-using AspNetCoreJwtBearerDPoP.Abstractions;
 
 builder.Services
     .AddAuthentication()

@@ -1,4 +1,4 @@
-namespace AspNetCoreJwtBearerDPoP.Abstractions;
+namespace AspNetCoreJwtBearerDPoP;
 
 /// <summary>
 /// Default names for the JWT + DPoP authentication scheme (RFC 9449).

@@ -1,4 +1,4 @@
-namespace AspNetCoreJwtBearerDPoP.Abstractions;
+namespace AspNetCoreJwtBearerDPoP;
 
 /// <summary>
 /// Optional allowlist of access tokens consulted before cryptographic validation.

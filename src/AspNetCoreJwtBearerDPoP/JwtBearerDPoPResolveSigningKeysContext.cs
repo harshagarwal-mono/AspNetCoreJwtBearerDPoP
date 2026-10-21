@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Http;
 using Microsoft.IdentityModel.Tokens;
 
-namespace AspNetCoreJwtBearerDPoP.Abstractions;
+namespace AspNetCoreJwtBearerDPoP;
 
 /// <summary>
 /// Context for <see cref="JwtBearerDPoPEvents.OnResolveAccessTokenSigningKeys"/>.

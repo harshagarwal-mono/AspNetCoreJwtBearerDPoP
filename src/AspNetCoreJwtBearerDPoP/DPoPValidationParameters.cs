@@ -1,4 +1,4 @@
-namespace AspNetCoreJwtBearerDPoP.Abstractions;
+namespace AspNetCoreJwtBearerDPoP;
 
 /// <summary>
 /// Parameters for DPoP proof validation beyond the access-token <see cref="Microsoft.IdentityModel.Tokens.TokenValidationParameters"/>.

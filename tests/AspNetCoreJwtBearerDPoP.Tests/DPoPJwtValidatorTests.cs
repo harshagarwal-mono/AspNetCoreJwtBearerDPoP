@@ -1,7 +1,6 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
-using AspNetCoreJwtBearerDPoP.Abstractions;
 using AspNetCoreJwtBearerDPoP.Tests.TestHelpers;
 using Microsoft.IdentityModel.Tokens;
 

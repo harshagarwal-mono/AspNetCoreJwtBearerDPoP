@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.IdentityModel.Tokens;
 
-namespace AspNetCoreJwtBearerDPoP.Abstractions;
+namespace AspNetCoreJwtBearerDPoP;
 
 /// <summary>
 /// Options for validating an access JWT together with a DPoP proof (RFC 9449).

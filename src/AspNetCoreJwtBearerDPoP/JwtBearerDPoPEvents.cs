@@ -1,4 +1,4 @@
-namespace AspNetCoreJwtBearerDPoP.Abstractions;
+namespace AspNetCoreJwtBearerDPoP;
 
 /// <summary>
 /// Events for the JWT + DPoP authentication handler.

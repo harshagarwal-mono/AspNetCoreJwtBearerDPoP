@@ -2,7 +2,6 @@ using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Security.Cryptography;
-using AspNetCoreJwtBearerDPoP.Abstractions;
 using Microsoft.IdentityModel.Tokens;
 
 namespace AspNetCoreJwtBearerDPoP.Tests.TestHelpers;

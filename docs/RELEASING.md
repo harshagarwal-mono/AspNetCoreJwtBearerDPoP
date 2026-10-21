@@ -32,6 +32,7 @@ Uses GitHub’s hosted runner (`ubuntu-latest`) and OIDC. No self-hosted runner 
    - **Repository:** `AspNetCoreJwtBearerDPoP`
    - **Workflow file:** `release.yml` (filename only; not `.github/workflows/...`)
    - **Environment:** leave empty (this workflow does not use a GitHub Environment)
+   - **Package / glob:** `AspNetCoreJwtBearerDPoP`
 4. In the GitHub repo: **Settings → Secrets and variables → Actions → New repository secret**
    - Name: `NUGET_USER`
    - Value: your **nuget.org username** (profile name), not your email
@@ -54,7 +55,7 @@ The nuget.org account used as `NUGET_USER` must be allowed to push these package
 ## Publish with an API key (manual fallback)
 
 1. Sign in at [nuget.org](https://www.nuget.org) and create an API key (**username → API Keys → Create**).
-2. Scope the key to **Push** (and new package versions as needed). A package glob such as `AspNetCoreJwtBearerDPoP*` covers both packages.
+2. Scope the key to **Push** (and new package versions as needed). A package glob of `AspNetCoreJwtBearerDPoP` is enough (only one package is published).
 3. Push (do not commit the key):
 
 ```bash
