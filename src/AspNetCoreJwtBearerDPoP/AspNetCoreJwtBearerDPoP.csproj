@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <PackageId>AspNetCoreJwtBearerDPoP</PackageId>
+    <Description>ASP.NET Core authentication handler that validates a JWT access token bound to a DPoP proof (RFC 9449). Reads credentials from headers or the query string, so it also works for WebSocket upgrades.</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../AspNetCoreJwtBearerDPoP.Abstractions/AspNetCoreJwtBearerDPoP.Abstractions.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
+  </ItemGroup>
+</Project>
